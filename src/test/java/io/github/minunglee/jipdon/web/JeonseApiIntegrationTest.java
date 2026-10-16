@@ -144,7 +144,7 @@ class JeonseApiIntegrationTest {
 		mockMvc.perform(get("/api/buildings/{id}/jeonse", id))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.building.name").value("현진에버빌2"))
-			.andExpect(jsonPath("$.areas[0].area").value(84))
+			.andExpect(jsonPath("$.areas[0].area").value(83)) // 83.654㎡
 			.andExpect(jsonPath("$.areas[0].sale.median").value(108_000))
 			.andExpect(jsonPath("$.areas[0].sale.months").value(12))
 			.andExpect(jsonPath("$.areas[0].level").value("UNKNOWN")) // 이 건물은 전세 거래가 없다
