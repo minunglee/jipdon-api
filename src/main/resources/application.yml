@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: jipdon-api
+  config:
+    # 로컬 비밀값(.env: 공공데이터포털 인증키)은 Git에 올리지 않는다. .env.example 참고
+    import: optional:file:${JIPDON_ENV_FILE:.env}[.properties]
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    hikari:
+      # 게이트웨이와 PostgreSQL을 함께 쓰므로(max_connections 30) 연결을 적게 잡는다
+      maximum-pool-size: 5
+  data:
+    redis:
+      # 게이트웨이는 0번 DB를 쓴다. 키가 섞이지 않게 다른 번호를 쓴다
+      database: ${REDIS_DATABASE:1}
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  # 로컬에서 게이트웨이(8080)와 함께 띄울 수 있게 다른 포트를 쓴다. 운영도 같은 포트 (Nginx가 jipdon-api:8090으로 넘김)
+  port: 8090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+jipdon:
+  zone: Asia/Seoul
+  rtms:
+    service-key: ${DATA_GO_KR_SERVICE_KEY:}
+    base-url: https://apis.data.go.kr/1613000
+    page-size: 1000
+    timeout: 20s
+  collect:
+    # 로컬에서는 기본으로 끈다. 운영 서버에서 JIPDON_COLLECT_ENABLED=true
+    enabled: ${JIPDON_COLLECT_ENABLED:false}
+    cron: "0 0 */6 * * *"
+    # 처음 한 번 모으는 기간과, 늦은 신고·해제를 반영하려고 다시 받는 최근 기간
+    history-months: 24
+    refresh-months: 3
+    refresh-interval: 20h
+    # 공공데이터포털 하루 호출 한도를 넘지 않게 한 번 실행에서 부르는 최대 횟수
+    max-calls-per-run: 3000
+  analysis:
+    # 이 기간 거래가 없으면 두 번째 기간까지 넓혀 본다
+    recent-months: 12
+    fallback-months: 24
+    cache-ttl: 24h

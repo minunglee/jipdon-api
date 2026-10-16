@@ -1,0 +1,14 @@
+# 로컬 개발용 인프라. ./gradlew bootRun 시 Spring Boot가 자동으로 띄운다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jipdon
+      POSTGRES_USER: jipdon
+      POSTGRES_PASSWORD: jipdon-local
+    ports:
+      - "5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379"
