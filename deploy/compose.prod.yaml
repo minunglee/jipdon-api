@@ -1,0 +1,27 @@
+# 운영 서버용 구성. 게이트웨이(~/app)가 띄운 PostgreSQL·Redis·Nginx와 같은 네트워크(app_default)에 붙는다.
+# 비밀값(DB 비밀번호, 공공데이터포털 인증키)은 서버의 /home/deploy/jipdon-api/.env 에만 있다.
+# 외부 포트는 열지 않는다. 바깥 요청은 Nginx가 https://jipdon.com/api/ 로 받아 넘긴다.
+name: jipdon
+
+services:
+  api:
+    # 배포 시 .env의 IMAGE_TAG(커밋 SHA)로 고정한다
+    image: ghcr.io/minunglee/jipdon-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: jipdon-api
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jipdon
+      SPRING_DATASOURCE_USERNAME: jipdon
+      SPRING_DATASOURCE_PASSWORD: ${JIPDON_DB_PASSWORD:?JIPDON_DB_PASSWORD is required}
+      SPRING_DATA_REDIS_HOST: redis
+      REDIS_DATABASE: 1
+      DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:?DATA_GO_KR_SERVICE_KEY is required}
+      JIPDON_COLLECT_ENABLED: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+    networks:
+      - app_default
+    mem_limit: 448m
+
+networks:
+  app_default:
+    external: true

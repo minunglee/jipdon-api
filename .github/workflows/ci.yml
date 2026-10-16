@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      # 통합 테스트는 Testcontainers로 실제 PostgreSQL·Redis를 띄워 실행한다 (공공 API는 부르지 않음)
+      - run: ./gradlew build
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: app-jar
+          path: build/libs/jipdon-api-*-SNAPSHOT.jar
+          retention-days: 1
+
+  # main에 머지되면 이미지를 만들어 서버에 배포한다
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: production
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/minunglee/jipdon-api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs
+
+      - name: 이미지 빌드 및 푸시
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker build -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:${{ github.sha }}
+
+      - name: SSH 접속 준비
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.SERVER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: 서버 배포
+        env:
+          TARGET: ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $TARGET 'mkdir -p jipdon-api'
+          scp -i ~/.ssh/deploy_key deploy/compose.prod.yaml $TARGET:jipdon-api/
+          ssh -i ~/.ssh/deploy_key $TARGET bash -s <<EOF
+            set -e
+            cd ~/jipdon-api
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # 서버에서 손으로 재시작해도 같은 버전이 뜨도록 현재 버전을 .env에 기록한다
+            sed -i '/^IMAGE_TAG=/d' .env && echo "IMAGE_TAG=${{ github.sha }}" >> .env
+            docker compose -f compose.prod.yaml pull --quiet
+            docker compose -f compose.prod.yaml up -d --remove-orphans
+            docker logout ghcr.io
+            docker image prune -f
+            # 앱이 뜰 때까지 기다린다 (컨테이너 안에서 직접 확인)
+            for i in \$(seq 1 40); do
+              if docker exec jipdon-api wget -qO- http://localhost:8090/actuator/health 2>/dev/null | grep -q UP; then
+                echo "배포 성공"; exit 0
+              fi
+              sleep 3
+            done
+            docker logs --tail 50 jipdon-api
+            echo "헬스 체크 실패"; exit 1
+          EOF
