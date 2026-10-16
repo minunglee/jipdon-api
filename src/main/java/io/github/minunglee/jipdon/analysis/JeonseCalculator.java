@@ -13,7 +13,8 @@ import java.util.function.Predicate;
 /**
  * 건물 하나의 거래 목록으로 면적별 전세가율을 계산한다 (DB·캐시와 분리한 순수 계산).
  *
- * - 면적은 전용면적을 반올림한 ㎡ 단위로 묶는다 (84.99 → 85).
+ * - 면적은 전용면적의 소수점을 버린 ㎡ 단위로 묶는다 (84.97 → 84). 국내 "84㎡형" 표기와 같고,
+ *   같은 타입이 59.39㎡·59.97㎡처럼 조금씩 달라도 반올림과 달리 한 묶음이 된다.
  * - 매매가·전세가는 중앙값을 쓴다. 한두 건의 특이한 거래(층·향·급매)에 평균보다 덜 흔들린다.
  * - 최근 12개월 거래로 계산하고, 그 기간에 거래가 없으면 24개월까지 넓힌다. 쓴 기간을 결과에 함께 남긴다.
  * - 전세가율 = 전세 중앙값 ÷ 매매 중앙값 × 100 (소수 첫째 자리 반올림)
@@ -83,7 +84,7 @@ public final class JeonseCalculator {
 	}
 
 	static int areaBucket(BigDecimal area) {
-		return area.setScale(0, RoundingMode.HALF_UP).intValueExact();
+		return area.setScale(0, RoundingMode.DOWN).intValueExact();
 	}
 
 	private static Map<Integer, List<Deal>> byArea(List<Deal> deals) {

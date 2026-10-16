@@ -32,10 +32,11 @@ class JeonseCalculatorTest {
 	}
 
 	@Test
-	void 전용면적은_반올림한_제곱미터로_묶는다() {
-		assertThat(JeonseCalculator.areaBucket(new BigDecimal("84.99"))).isEqualTo(85);
-		assertThat(JeonseCalculator.areaBucket(new BigDecimal("84.5"))).isEqualTo(85);
-		assertThat(JeonseCalculator.areaBucket(new BigDecimal("59.49"))).isEqualTo(59);
+	void 전용면적은_소수점을_버린_제곱미터로_묶는다() {
+		// 같은 59㎡형이 59.39㎡·59.97㎡로 신고돼도 한 묶음 (반올림하면 59와 60으로 갈라진다)
+		assertThat(JeonseCalculator.areaBucket(new BigDecimal("59.39"))).isEqualTo(59);
+		assertThat(JeonseCalculator.areaBucket(new BigDecimal("59.97"))).isEqualTo(59);
+		assertThat(JeonseCalculator.areaBucket(new BigDecimal("84.99"))).isEqualTo(84);
 	}
 
 	@Test
@@ -47,7 +48,7 @@ class JeonseCalculatorTest {
 
 		assertThat(result).hasSize(1);
 		AreaResult area = result.get(0);
-		assertThat(area.area()).isEqualTo(85);
+		assertThat(area.area()).isEqualTo(84);
 		assertThat(area.sale().median()).isEqualTo(100_000);
 		assertThat(area.sale().count()).isEqualTo(3);
 		assertThat(area.sale().latest()).isEqualTo(LocalDate.of(2026, 9, 1));

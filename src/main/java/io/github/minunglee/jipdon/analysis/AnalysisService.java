@@ -30,6 +30,9 @@ public class AnalysisService {
 
 	private static final Logger log = LoggerFactory.getLogger(AnalysisService.class);
 
+	/** 계산 방식이 바뀌면 올린다. 예전 방식으로 계산해 둔 캐시를 쓰지 않게 키에 넣는다 */
+	private static final int CALCULATION_VERSION = 2;
+
 	private static final int SEARCH_LIMIT = 20;
 
 	/** 이름이 짧으면 후보가 많으므로, 거래 수를 셀 후보를 먼저 이만큼으로 줄인다 */
@@ -85,7 +88,7 @@ public class AnalysisService {
 	public Optional<BuildingAnalysis> analyze(long buildingId) {
 		String version = cacheVersion.current();
 		LocalDate today = LocalDate.now(clock);
-		String key = "jipdon:analysis:v" + version + ":" + buildingId + ":" + today;
+		String key = "jipdon:analysis:v" + version + ":c" + CALCULATION_VERSION + ":" + buildingId + ":" + today;
 		if (version != null) {
 			Optional<BuildingAnalysis> cached = readCache(key);
 			if (cached.isPresent()) {
