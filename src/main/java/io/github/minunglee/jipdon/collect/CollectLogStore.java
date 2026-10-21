@@ -25,7 +25,7 @@ public class CollectLogStore {
 	public record Task(String sggCd, DealKind kind, YearMonth month) {
 	}
 
-	/** 모든 수집 기록 (지역 83 × 종류 4 × 24개월 ≈ 8천 줄이라 한 번에 읽는다) */
+	/** 모든 수집 기록 (지역 256 × 종류 8 × 24개월 ≈ 5만 줄이라 한 번에 읽는다) */
 	public Map<Task, Instant> all() {
 		Map<Task, Instant> logs = new HashMap<>();
 		jdbc.query("SELECT sgg_cd, deal_kind, deal_ym, collected_at FROM collect_log", rs -> {
