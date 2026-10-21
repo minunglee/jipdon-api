@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.github.minunglee.jipdon.JipdonProperties;
 import io.github.minunglee.jipdon.analysis.CacheVersion;
+import io.github.minunglee.jipdon.analysis.RankingService;
 import io.github.minunglee.jipdon.collect.CollectLogStore.Task;
 import io.github.minunglee.jipdon.deal.BuildingKey;
 import io.github.minunglee.jipdon.deal.BuildingKind;
@@ -45,6 +46,8 @@ public class Collector {
 
 	private final CacheVersion cacheVersion;
 
+	private final RankingService rankingService;
+
 	private final JipdonProperties.Collect properties;
 
 	private final Clock clock;
@@ -52,11 +55,12 @@ public class Collector {
 	private final AtomicBoolean running = new AtomicBoolean();
 
 	Collector(RtmsClient client, DealStore dealStore, CollectLogStore logStore, CacheVersion cacheVersion,
-			JipdonProperties properties, Clock clock) {
+			RankingService rankingService, JipdonProperties properties, Clock clock) {
 		this.client = client;
 		this.dealStore = dealStore;
 		this.logStore = logStore;
 		this.cacheVersion = cacheVersion;
+		this.rankingService = rankingService;
 		this.properties = properties.collect();
 		this.clock = clock;
 	}
@@ -161,6 +165,12 @@ public class Collector {
 			}
 		}
 		if (changed > 0) {
+			try {
+				rankingService.refresh(); // 동네 순위용 요약을 새 거래로 다시 계산
+			}
+			catch (RuntimeException ex) {
+				log.warn("전세가율 요약을 다시 계산하지 못했습니다: {}", ex.toString());
+			}
 			cacheVersion.bump(); // 계산 결과 캐시를 한 번에 무효화
 		}
 		Result result = new Result(done, calls, changed, failed, quota, tasks.size() - done - failed);
