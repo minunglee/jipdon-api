@@ -81,6 +81,48 @@ public class DealStore {
 		return changed;
 	}
 
+	/**
+	 * 단독·다가구 거래 저장 (건물 없이 동 단위). 매매는 계약 해제 여부만 갱신한다.
+	 * @return 새로 들어가거나 해제 여부가 바뀐 거래 수
+	 */
+	@Transactional
+	public int saveDetached(DealKind kind, String sggCd, List<RtmsItem> items) {
+		List<Object[]> rows = new ArrayList<>(items.size());
+		for (RtmsItem item : items) {
+			if (item.totalFloorArea() == null || (kind.sale() ? item.price() == null : item.deposit() == null)) {
+				continue;
+			}
+			rows.add(new Object[] { sggCd, item.umd(), item.houseType(), kind.sale() ? "SALE" : "RENT",
+					item.totalFloorArea(), item.plottageArea(), item.buildYear(), Date.valueOf(item.dealDate()),
+					item.price(), item.deposit(), item.monthlyRent(), item.canceled(), detachedKey(kind, sggCd, item) });
+		}
+		if (rows.isEmpty()) {
+			return 0;
+		}
+		int[] counts = jdbc.batchUpdate("""
+				INSERT INTO detached_deal (sgg_cd, umd_nm, house_type, deal_type, total_floor_area, plottage_area,
+				                           build_year, deal_date, price_man, deposit_man, monthly_rent_man, canceled,
+				                           natural_key)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT (natural_key) DO UPDATE SET canceled = EXCLUDED.canceled
+				WHERE detached_deal.canceled IS DISTINCT FROM EXCLUDED.canceled
+				""", rows);
+		int changed = 0;
+		for (int count : counts) {
+			changed += Math.max(count, 0);
+		}
+		return changed;
+	}
+
+	/** 단독·다가구 거래의 해시. 지번은 가려진 값("1*") 그대로 넣는다 */
+	static String detachedKey(DealKind kind, String sggCd, RtmsItem item) {
+		return hash(String.join("|", kind.name(), sggCd, item.umd(), item.jibun(), String.valueOf(item.houseType()),
+				item.totalFloorArea().stripTrailingZeros().toPlainString(),
+				item.plottageArea() == null ? "" : item.plottageArea().stripTrailingZeros().toPlainString(),
+				String.valueOf(item.buildYear()), item.dealDate().toString(), String.valueOf(item.price()),
+				String.valueOf(item.deposit()), String.valueOf(item.monthlyRent())));
+	}
+
 	private long insertBuilding(BuildingKey key, RtmsItem item) {
 		// 다른 수집이 먼저 넣었을 수 있으므로 충돌하면 기존 id를 돌려받는다
 		Long id = jdbc.queryForObject("""
@@ -102,6 +144,10 @@ public class DealStore {
 				item.exclusiveArea().stripTrailingZeros().toPlainString(), String.valueOf(item.floor()),
 				item.dealDate().toString(), String.valueOf(item.price()), String.valueOf(item.deposit()),
 				String.valueOf(item.monthlyRent()), String.valueOf(item.contractType()));
+		return hash(raw);
+	}
+
+	private static String hash(String raw) {
 		try {
 			byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
 			return HexFormat.of().formatHex(hash, 0, 16);

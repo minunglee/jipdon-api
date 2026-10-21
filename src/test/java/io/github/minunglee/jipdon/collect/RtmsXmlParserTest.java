@@ -68,6 +68,42 @@ public class RtmsXmlParserTest {
 	}
 
 	@Test
+	void 오피스텔은_offiNm을_건물_이름으로_읽는다() {
+		RtmsItem sale = RtmsXmlParser.parse(fixture("offi-trade.xml"), DealKind.OFFI_SALE).items().get(0);
+		assertThat(sale.buildingName()).isEqualTo("상암 한화 오벨리스크");
+		assertThat(sale.houseType()).isEqualTo("오피스텔");
+		assertThat(sale.jibun()).isEqualTo("1734");
+		assertThat(sale.price()).isEqualTo(10_500);
+		assertThat(sale.exclusiveArea()).isEqualByComparingTo(new BigDecimal("24.22"));
+
+		RtmsItem rent = RtmsXmlParser.parse(fixture("offi-rent.xml"), DealKind.OFFI_RENT).items().get(0);
+		assertThat(rent.deposit()).isEqualTo(19_000);
+		assertThat(rent.monthlyRent()).isEqualTo(10);
+		assertThat(rent.contractType()).isEqualTo("갱신");
+	}
+
+	@Test
+	void 단독_다가구는_지번이_가려지고_이름_없이_연면적과_대지면적이_온다() {
+		RtmsPage page = RtmsXmlParser.parse(fixture("sh-trade.xml"), DealKind.SH_SALE);
+		RtmsItem first = page.items().get(0);
+		assertThat(first.houseType()).isEqualTo("단독");
+		assertThat(first.jibun()).isEqualTo("*");
+		assertThat(first.buildingName()).isEmpty();
+		assertThat(first.exclusiveArea()).isNull();
+		assertThat(first.totalFloorArea()).isEqualByComparingTo(new BigDecimal("48.32"));
+		assertThat(first.plottageArea()).isEqualByComparingTo(new BigDecimal("34"));
+		assertThat(first.price()).isEqualTo(90_000);
+		assertThat(page.items().get(2).houseType()).isEqualTo("다가구");
+
+		RtmsItem rent = RtmsXmlParser.parse(fixture("sh-rent.xml"), DealKind.SH_RENT).items().get(0);
+		assertThat(rent.houseType()).isEqualTo("다가구");
+		assertThat(rent.jibun()).isEmpty(); // 전월세는 지번이 아예 없다
+		assertThat(rent.totalFloorArea()).isEqualByComparingTo(new BigDecimal("16")); // 계약 면적
+		assertThat(rent.deposit()).isEqualTo(1_000);
+		assertThat(rent.monthlyRent()).isEqualTo(57);
+	}
+
+	@Test
 	void 계약_해제된_매매를_표시한다() {
 		String xml = fixture("apt-trade.xml").replaceFirst("<cdealType> </cdealType>", "<cdealType>O</cdealType>");
 		assertThat(RtmsXmlParser.parse(xml, DealKind.APT_SALE).items().get(0).canceled()).isTrue();

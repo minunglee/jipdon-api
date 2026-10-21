@@ -57,15 +57,31 @@ public final class RtmsXmlParser {
 	}
 
 	private static RtmsItem item(Element e, DealKind kind) {
-		boolean apt = kind.buildingKind() == BuildingKind.APT;
-		String name = apt ? text(e, "aptNm") : text(e, "mhouseNm");
-		String houseType = apt ? "아파트" : text(e, "houseType");
+		// 종류마다 건물 이름 태그가 다르다. 단독·다가구는 이름이 없다
+		String name;
+		String houseType;
+		if (kind.detached()) {
+			name = null;
+			houseType = text(e, "houseType"); // 단독·다가구
+		}
+		else if (kind.buildingKind() == BuildingKind.APT) {
+			name = text(e, "aptNm");
+			houseType = "아파트";
+		}
+		else if (kind.buildingKind() == BuildingKind.OFFI) {
+			name = text(e, "offiNm");
+			houseType = "오피스텔";
+		}
+		else {
+			name = text(e, "mhouseNm");
+			houseType = text(e, "houseType"); // 연립·다세대
+		}
 		LocalDate date = LocalDate.of(integer(e, "dealYear"), integer(e, "dealMonth"), integer(e, "dealDay"));
 		return new RtmsItem(text(e, "sggCd"), orEmpty(text(e, "umdNm")), orEmpty(text(e, "jibun")), orEmpty(name),
 				houseType, integer(e, "buildYear"), decimal(e, "excluUseAr"), integer(e, "floor"), date,
 				kind.sale() ? integer(e, "dealAmount") : null, kind.sale() ? null : integer(e, "deposit"),
 				kind.sale() ? null : orZero(integer(e, "monthlyRent")), text(e, "contractType"),
-				"O".equals(text(e, "cdealType")));
+				"O".equals(text(e, "cdealType")), decimal(e, "totalFloorAr"), decimal(e, "plottageAr"));
 	}
 
 	private static Document read(String xml) {
