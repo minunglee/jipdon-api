@@ -40,7 +40,7 @@ public final class Regions {
 				if (line.isBlank() || line.startsWith("#")) {
 					continue;
 				}
-				String[] cols = line.split("\t");
+				String[] cols = line.strip().split("\t"); // Windows 체크아웃의 줄 끝(\r)도 떼어 낸다
 				regions.add(new Region(cols[0], cols[1], cols[2]));
 			}
 			return List.copyOf(regions);
