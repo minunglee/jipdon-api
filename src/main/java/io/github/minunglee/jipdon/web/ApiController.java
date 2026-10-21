@@ -8,6 +8,7 @@ import io.github.minunglee.jipdon.analysis.AnalysisService;
 import io.github.minunglee.jipdon.analysis.BuildingAnalysis;
 import io.github.minunglee.jipdon.analysis.BuildingSummary;
 import io.github.minunglee.jipdon.analysis.DetachedSummary;
+import io.github.minunglee.jipdon.analysis.RankingService;
 import io.github.minunglee.jipdon.deal.BuildingKind;
 import io.github.minunglee.jipdon.region.Region;
 import io.github.minunglee.jipdon.region.Regions;
@@ -33,8 +34,11 @@ class ApiController {
 
 	private final AnalysisService analysis;
 
-	ApiController(AnalysisService analysis) {
+	private final RankingService ranking;
+
+	ApiController(AnalysisService analysis, RankingService ranking) {
 		this.analysis = analysis;
+		this.ranking = ranking;
 	}
 
 	@GetMapping("/regions")
@@ -65,6 +69,16 @@ class ApiController {
 			throw new BadRequestException("주택 유형은 다가구 또는 단독만 지원합니다.");
 		}
 		return analysis.detached(found, type);
+	}
+
+	/** 전세가율 높은 동네 순위. sido를 비우면 전국 */
+	@GetMapping("/rankings")
+	RankingService.Ranking rankings(@RequestParam(defaultValue = "APT") BuildingKind kind,
+			@RequestParam(required = false) String sido) {
+		if (sido != null && !sido.isBlank() && Regions.ALL.stream().noneMatch(r -> r.sido().equals(sido))) {
+			throw new BadRequestException("지원하지 않는 시·도입니다.");
+		}
+		return ranking.ranking(kind, sido == null || sido.isBlank() ? null : sido);
 	}
 
 	@GetMapping("/status")

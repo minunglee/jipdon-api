@@ -68,7 +68,7 @@ class JeonseApiIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		jdbc.execute("TRUNCATE sale_deal, rent_deal, detached_deal, building, collect_log RESTART IDENTITY");
+		jdbc.execute("TRUNCATE area_ratio, area_ratio_meta, sale_deal, rent_deal, detached_deal, building, collect_log RESTART IDENTITY");
 		redis.getConnectionFactory().getConnection().serverCommands().flushDb();
 		given(client.configured()).willReturn(true);
 		given(client.pageSize()).willReturn(1000);
