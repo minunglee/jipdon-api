@@ -45,6 +45,10 @@ jipdon:
     refresh-interval: 20h
     # 공공데이터포털 하루 호출 한도를 넘지 않게 한 번 실행에서 부르는 최대 횟수 (전국 256개 × 8종이라 처음 채우는 데 하루 남짓)
     max-calls-per-run: 8000
+  # 방문 통계: 순방문자 해시용 비밀값, 관리자 화면(minunglee.cloud)이 통계를 읽을 때 쓰는 내부 토큰
+  visit:
+    salt: ${JIPDON_VISIT_SALT:local-dev-visit-salt}
+  internal-token: ${JIPDON_INTERNAL_TOKEN:}
   analysis:
     # 이 기간 거래가 없으면 두 번째 기간까지 넓혀 본다
     recent-months: 12
