@@ -90,7 +90,7 @@ public class AnalysisService {
 		LocalDate today = LocalDate.now(clock);
 		String key = "jipdon:analysis:v" + version + ":c" + CALCULATION_VERSION + ":" + buildingId + ":" + today;
 		if (version != null) {
-			Optional<BuildingAnalysis> cached = readCache(key);
+			Optional<BuildingAnalysis> cached = readCache(key, BuildingAnalysis.class);
 			if (cached.isPresent()) {
 				return cached;
 			}
@@ -130,6 +130,55 @@ public class AnalysisService {
 				today, collectLog.lastCollectedAt()));
 	}
 
+	/** 단독·다가구 동별 시세 참고 (최근 기간의 전세 보증금 범위와 매매가) */
+	public DetachedSummary detached(Region region, String houseType) {
+		String version = cacheVersion.current();
+		LocalDate today = LocalDate.now(clock);
+		String key = "jipdon:detached:v" + version + ":c" + CALCULATION_VERSION + ":" + region.code() + ":" + houseType
+				+ ":" + today;
+		if (version != null) {
+			Optional<DetachedSummary> cached = readCache(key, DetachedSummary.class);
+			if (cached.isPresent()) {
+				return cached.get();
+			}
+		}
+		int months = properties.recentMonths();
+		LocalDate since = today.minusMonths(months);
+		// 전세(월세 0)와 매매를 동별로 모아 사분위·중앙값을 DB에서 바로 계산한다
+		List<DetachedSummary.Dong> dongs = jdbc.query("""
+				SELECT umd_nm,
+				       count(*) FILTER (WHERE jeonse) AS jeonse_count,
+				       percentile_cont(0.25) WITHIN GROUP (ORDER BY deposit_man) FILTER (WHERE jeonse) AS jeonse_p25,
+				       percentile_cont(0.5) WITHIN GROUP (ORDER BY deposit_man) FILTER (WHERE jeonse) AS jeonse_median,
+				       percentile_cont(0.75) WITHIN GROUP (ORDER BY deposit_man) FILTER (WHERE jeonse) AS jeonse_p75,
+				       percentile_cont(0.5) WITHIN GROUP (ORDER BY total_floor_area) FILTER (WHERE jeonse) AS jeonse_area,
+				       count(*) FILTER (WHERE sale) AS sale_count,
+				       percentile_cont(0.5) WITHIN GROUP (ORDER BY price_man) FILTER (WHERE sale) AS sale_median,
+				       percentile_cont(0.5) WITHIN GROUP (ORDER BY total_floor_area) FILTER (WHERE sale) AS sale_area
+				FROM (SELECT *, deal_type = 'RENT' AND monthly_rent_man = 0 AS jeonse,
+				             deal_type = 'SALE' AND NOT canceled AS sale
+				      FROM detached_deal
+				      WHERE sgg_cd = ? AND house_type = ? AND deal_date >= ? AND deal_date <= ?) d
+				GROUP BY umd_nm
+				HAVING count(*) FILTER (WHERE jeonse OR sale) > 0
+				ORDER BY jeonse_count DESC, sale_count DESC, umd_nm
+				""", (rs, i) -> new DetachedSummary.Dong(rs.getString("umd_nm"), rs.getInt("jeonse_count"),
+				rounded(rs.getObject("jeonse_p25")), rounded(rs.getObject("jeonse_median")),
+				rounded(rs.getObject("jeonse_p75")), rounded(rs.getObject("jeonse_area")), rs.getInt("sale_count"),
+				rounded(rs.getObject("sale_median")), rounded(rs.getObject("sale_area"))), region.code(), houseType,
+				Date.valueOf(since), Date.valueOf(today));
+		DetachedSummary summary = new DetachedSummary(region.code(), region.fullName(), houseType, months, today,
+				collectLog.lastCollectedAt(), dongs);
+		if (version != null) {
+			writeCache(key, summary);
+		}
+		return summary;
+	}
+
+	private static Integer rounded(Object value) {
+		return value == null ? null : (int) Math.round(((Number) value).doubleValue());
+	}
+
 	/** 화면 하단의 데이터 현황 */
 	public record Status(Instant lastCollectedAt, long buildings, long saleDeals, long rentDeals, int regions) {
 	}
@@ -157,10 +206,10 @@ public class AnalysisService {
 		};
 	}
 
-	private Optional<BuildingAnalysis> readCache(String key) {
+	private <T> Optional<T> readCache(String key, Class<T> type) {
 		try {
 			String value = redis.opsForValue().get(key);
-			return value == null ? Optional.empty() : Optional.of(json.readValue(value, BuildingAnalysis.class));
+			return value == null ? Optional.empty() : Optional.of(json.readValue(value, type));
 		}
 		catch (RuntimeException ex) {
 			log.warn("분석 캐시를 읽지 못해 다시 계산합니다: {}", ex.getMessage());
@@ -168,9 +217,9 @@ public class AnalysisService {
 		}
 	}
 
-	private void writeCache(String key, BuildingAnalysis analysis) {
+	private void writeCache(String key, Object value) {
 		try {
-			redis.opsForValue().set(key, json.writeValueAsString(analysis), properties.cacheTtl());
+			redis.opsForValue().set(key, json.writeValueAsString(value), properties.cacheTtl());
 		}
 		catch (RuntimeException ex) {
 			log.warn("분석 캐시를 저장하지 못했습니다: {}", ex.getMessage());

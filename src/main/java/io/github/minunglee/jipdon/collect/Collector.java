@@ -125,7 +125,7 @@ public class Collector {
 				break;
 			}
 			try {
-				Map<BuildingKey, Long> buildings = buildingCache
+				Map<BuildingKey, Long> buildings = task.kind().detached() ? null : buildingCache
 					.computeIfAbsent(task.kind().buildingKind(), k -> new HashMap<>())
 					.computeIfAbsent(task.sggCd(), sgg -> dealStore.loadBuildings(task.kind().buildingKind(), sgg));
 				int rows = 0;
@@ -133,7 +133,8 @@ public class Collector {
 				while (true) {
 					RtmsPage result = client.fetch(task.kind(), task.sggCd(), task.month(), page);
 					calls++;
-					changed += dealStore.save(task.kind(), task.sggCd(), result.items(), buildings);
+					changed += task.kind().detached() ? dealStore.saveDetached(task.kind(), task.sggCd(), result.items())
+							: dealStore.save(task.kind(), task.sggCd(), result.items(), buildings);
 					rows += result.items().size();
 					if (result.items().isEmpty() || (long) page * client.pageSize() >= result.totalCount()) {
 						break;
@@ -169,6 +170,9 @@ public class Collector {
 
 	/** 저장이 롤백됐으면 그 사이 새로 받은 건물 id도 없던 일이 되므로, 다음에 DB에서 다시 읽게 한다 */
 	private static void forgetBuildings(Map<BuildingKind, Map<String, Map<BuildingKey, Long>>> cache, Task task) {
+		if (task.kind().detached()) {
+			return;
+		}
 		Map<String, Map<BuildingKey, Long>> byRegion = cache.get(task.kind().buildingKind());
 		if (byRegion != null) {
 			byRegion.remove(task.sggCd());

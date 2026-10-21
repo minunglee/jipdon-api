@@ -2,10 +2,12 @@ package io.github.minunglee.jipdon.web;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import io.github.minunglee.jipdon.analysis.AnalysisService;
 import io.github.minunglee.jipdon.analysis.BuildingAnalysis;
 import io.github.minunglee.jipdon.analysis.BuildingSummary;
+import io.github.minunglee.jipdon.analysis.DetachedSummary;
 import io.github.minunglee.jipdon.deal.BuildingKind;
 import io.github.minunglee.jipdon.region.Region;
 import io.github.minunglee.jipdon.region.Regions;
@@ -26,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 class ApiController {
 
 	private static final int MAX_QUERY_LENGTH = 30;
+
+	private static final Set<String> DETACHED_TYPES = Set.of("다가구", "단독");
 
 	private final AnalysisService analysis;
 
@@ -51,6 +55,16 @@ class ApiController {
 	@GetMapping("/buildings/{id}/jeonse")
 	BuildingAnalysis jeonse(@PathVariable long id) {
 		return analysis.analyze(id).orElseThrow(() -> new NotFoundException("건물을 찾을 수 없습니다."));
+	}
+
+	/** 단독·다가구 동별 시세 참고. type: 다가구 또는 단독 */
+	@GetMapping("/detached")
+	DetachedSummary detached(@RequestParam String region, @RequestParam(defaultValue = "다가구") String type) {
+		Region found = Regions.find(region).orElseThrow(() -> new BadRequestException("지원하지 않는 지역입니다."));
+		if (!DETACHED_TYPES.contains(type)) {
+			throw new BadRequestException("주택 유형은 다가구 또는 단독만 지원합니다.");
+		}
+		return analysis.detached(found, type);
 	}
 
 	@GetMapping("/status")
