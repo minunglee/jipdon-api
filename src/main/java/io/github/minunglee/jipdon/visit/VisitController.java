@@ -40,8 +40,9 @@ class VisitController {
 	/** 화면이 페이지를 열 때 보내는 신호 (navigator.sendBeacon) */
 	@PostMapping("/api/pv")
 	ResponseEntity<Void> pageView(@RequestBody PageView body, HttpServletRequest request,
-			@RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
-		visits.record(body.path(), body.ref(), request.getRemoteAddr(), userAgent);
+			@RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent,
+			@RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+		visits.record(body.path(), body.ref(), request.getRemoteAddr(), userAgent, acceptLanguage);
 		return ResponseEntity.noContent().build();
 	}
 
