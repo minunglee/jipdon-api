@@ -48,6 +48,7 @@ class VisitIntegrationTest {
 		return mockMvc.perform(post("/api/pv").contentType(MediaType.APPLICATION_JSON)
 			.content("{\"path\":\"" + path + "\",\"ref\":\"" + ref + "\"}")
 			.header("User-Agent", ua)
+			.header("Accept-Language", "ko-KR,ko;q=0.9")
 			.with(r -> {
 				r.setRemoteAddr(ip);
 				return r;
@@ -69,6 +70,9 @@ class VisitIntegrationTest {
 	@Test
 	void 로봇과_사이트_안_이동은_구분한다() throws Exception {
 		visit("/", "", "203.0.113.7", "Googlebot/2.1 (+http://www.google.com/bot.html)").andExpect(status().isNoContent());
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM page_view", Integer.class)).isZero();
+		// 브라우저인 척하는 2019년 iOS 13 (운영 로그 최다 스캐너)
+		visit("/", "", "203.0.113.7", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) Mobile/15E148 Safari/604.1");
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM page_view", Integer.class)).isZero();
 
 		visit("/loan/", "https://jipdon.com/", "203.0.113.7", IPHONE);

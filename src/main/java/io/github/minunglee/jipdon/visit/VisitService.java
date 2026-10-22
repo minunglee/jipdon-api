@@ -10,7 +10,6 @@ import java.time.ZoneId;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -30,9 +29,6 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class VisitService {
-
-	private static final Pattern BOT = Pattern.compile("bot|crawl|spider|slurp|preview|headless|lighthouse|curl|wget|python|java/",
-			Pattern.CASE_INSENSITIVE);
 
 	private static final int MAX_PATH = 200;
 
@@ -56,14 +52,15 @@ public class VisitService {
 	}
 
 	/**
-	 * 방문 한 건을 기록한다. 검색엔진 로봇이나 이상한 주소면 기록하지 않는다.
+	 * 방문 한 건을 기록한다. 로봇·스캐너(BotFilter)나 이상한 주소면 기록하지 않는다.
 	 * @return 기록했으면 true
 	 */
-	public boolean record(String path, String referrer, String ip, String userAgent) {
-		String ua = userAgent == null ? "" : userAgent;
-		if (ua.isBlank() || BOT.matcher(ua).find()) {
+	public boolean record(String path, String referrer, String ip, String userAgent, String acceptLanguage) {
+		// 비컨의 ref는 document.referrer라 직접 방문이면 비어 있는 게 정상 -> Referer 검사는 하지 않는다
+		if (BotFilter.isBot(userAgent, acceptLanguage, null)) {
 			return false;
 		}
+		String ua = userAgent;
 		String cleanPath = cleanPath(path);
 		if (cleanPath == null) {
 			return false;
