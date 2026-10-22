@@ -44,6 +44,8 @@ public class Collector {
 
 	private final CollectLogStore logStore;
 
+	private final CollectRunStore runStore;
+
 	private final CacheVersion cacheVersion;
 
 	private final RankingService rankingService;
@@ -54,11 +56,12 @@ public class Collector {
 
 	private final AtomicBoolean running = new AtomicBoolean();
 
-	Collector(RtmsClient client, DealStore dealStore, CollectLogStore logStore, CacheVersion cacheVersion,
-			RankingService rankingService, JipdonProperties properties, Clock clock) {
+	Collector(RtmsClient client, DealStore dealStore, CollectLogStore logStore, CollectRunStore runStore,
+			CacheVersion cacheVersion, RankingService rankingService, JipdonProperties properties, Clock clock) {
 		this.client = client;
 		this.dealStore = dealStore;
 		this.logStore = logStore;
+		this.runStore = runStore;
 		this.cacheVersion = cacheVersion;
 		this.rankingService = rankingService;
 		this.properties = properties.collect();
@@ -69,8 +72,19 @@ public class Collector {
 			int remainingTasks) {
 	}
 
+	/** 다시 받을 최근 달(refresh)과 아직 안 받은 달(backlog) */
+	record Plan(List<Task> refresh, List<Task> backlog) {
+	}
+
 	/** 이번 실행에서 할 일 (순서대로) */
 	List<Task> plan() {
+		Plan parts = planParts();
+		List<Task> tasks = new ArrayList<>(parts.refresh());
+		tasks.addAll(parts.backlog());
+		return tasks;
+	}
+
+	Plan planParts() {
 		YearMonth current = YearMonth.now(clock);
 		Instant now = clock.instant();
 		Map<Task, Instant> logs = logStore.all();
@@ -92,8 +106,11 @@ public class Collector {
 				}
 			}
 		}
-		refresh.addAll(backlog);
-		return refresh;
+		return new Plan(refresh, backlog);
+	}
+
+	boolean keyConfigured() {
+		return client.configured();
 	}
 
 	/** 한 번 수집한다. 이미 실행 중이면 건너뛴다 */
@@ -116,6 +133,7 @@ public class Collector {
 
 	private Result collect(List<Task> tasks) {
 		long started = System.nanoTime();
+		Instant startedAt = clock.instant();
 		int calls = 0;
 		int changed = 0;
 		int failed = 0;
@@ -174,6 +192,14 @@ public class Collector {
 			cacheVersion.bump(); // 계산 결과 캐시를 한 번에 무효화
 		}
 		Result result = new Result(done, calls, changed, failed, quota, tasks.size() - done - failed);
+		if (calls > 0 || failed > 0) { // 할 일이 없어 바로 끝난 실행은 남기지 않는다
+			try {
+				runStore.record(result, startedAt, clock.instant());
+			}
+			catch (RuntimeException ex) {
+				log.warn("수집 이력을 남기지 못했습니다: {}", ex.toString());
+			}
+		}
 		log.info("실거래가 수집 완료 {} ({}초)", result, (System.nanoTime() - started) / 1_000_000_000);
 		return result;
 	}
