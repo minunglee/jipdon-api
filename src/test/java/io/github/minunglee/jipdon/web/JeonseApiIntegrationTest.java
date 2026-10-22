@@ -41,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 수집 → 저장 → 조회 API를 실제 PostgreSQL·Redis(Testcontainers)로 검증한다.
  * 공공 API는 부르지 않고, 저장해 둔 실제 응답(마포구 2026년 9월)을 돌려주게 바꿔 끼운다.
  */
-@SpringBootTest(properties = { "jipdon.collect.history-months=2", "jipdon.collect.refresh-months=1" })
+@SpringBootTest(properties = { "jipdon.collect.history-months=2", "jipdon.collect.refresh-months=1",
+		"jipdon.internal-token=test-internal-token" })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class JeonseApiIntegrationTest {
@@ -68,7 +69,7 @@ class JeonseApiIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		jdbc.execute("TRUNCATE area_ratio, area_ratio_meta, sale_deal, rent_deal, detached_deal, building, collect_log RESTART IDENTITY");
+		jdbc.execute("TRUNCATE area_ratio, area_ratio_meta, sale_deal, rent_deal, detached_deal, building, collect_log, collect_run RESTART IDENTITY");
 		redis.getConnectionFactory().getConnection().serverCommands().flushDb();
 		given(client.configured()).willReturn(true);
 		given(client.pageSize()).willReturn(1000);
@@ -104,6 +105,32 @@ class JeonseApiIntegrationTest {
 		// 20시간이 지나지 않았으므로 다시 받을 것이 없다
 		Collector.Result second = collector.run();
 		assertThat(second.calls()).isZero();
+	}
+
+	@Test
+	void 수집_현황은_내부_토큰이_있어야_보이고_실행_이력을_남긴다() throws Exception {
+		int tasks = Regions.ALL.size() * DealKind.values().length * 2;
+		mockMvc.perform(get("/internal/collect").header("X-Internal-Token", "test-internal-token"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalTasks").value(tasks))
+			.andExpect(jsonPath("$.missing").value(tasks / 2)) // 지난달은 아직 안 받음
+			.andExpect(jsonPath("$.refreshDue").value(tasks / 2)) // 이번 달은 받을 차례
+			.andExpect(jsonPath("$.recentRuns", hasSize(0)));
+
+		collector.run();
+		collector.run(); // 할 일이 없는 실행은 이력에 남기지 않는다
+
+		mockMvc.perform(get("/internal/collect")).andExpect(status().isNotFound());
+		mockMvc.perform(get("/internal/collect").header("X-Internal-Token", "test-internal-token"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.keyConfigured").value(true))
+			.andExpect(jsonPath("$.lastCollectedAt").isNotEmpty())
+			.andExpect(jsonPath("$.missing").value(0))
+			.andExpect(jsonPath("$.refreshDue").value(0))
+			.andExpect(jsonPath("$.recentRuns", hasSize(1)))
+			.andExpect(jsonPath("$.recentRuns[0].calls").value(tasks))
+			.andExpect(jsonPath("$.recentRuns[0].changedRows").value(24))
+			.andExpect(jsonPath("$.recentRuns[0].stoppedByQuota").value(false));
 	}
 
 	@Test

@@ -48,7 +48,7 @@ class RankingIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		jdbc.execute("TRUNCATE area_ratio, area_ratio_meta, sale_deal, rent_deal, detached_deal, building, collect_log RESTART IDENTITY CASCADE");
+		jdbc.execute("TRUNCATE area_ratio, area_ratio_meta, sale_deal, rent_deal, detached_deal, building, collect_log, collect_run RESTART IDENTITY CASCADE");
 		redis.getConnectionFactory().getConnection().serverCommands().flushDb();
 	}
 

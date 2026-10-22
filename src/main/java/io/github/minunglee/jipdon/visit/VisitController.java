@@ -1,11 +1,10 @@
 package io.github.minunglee.jipdon.visit;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import io.github.minunglee.jipdon.InternalToken;
+
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +26,9 @@ class VisitController {
 
 	private final VisitService visits;
 
-	private final String internalToken;
+	private final InternalToken internalToken;
 
-	VisitController(VisitService visits, @Value("${jipdon.internal-token:}") String internalToken) {
+	VisitController(VisitService visits, InternalToken internalToken) {
 		this.visits = visits;
 		this.internalToken = internalToken;
 	}
@@ -49,8 +48,7 @@ class VisitController {
 	@GetMapping("/internal/stats")
 	ResponseEntity<VisitStats> stats(@RequestHeader(value = "X-Internal-Token", required = false) String token,
 			@RequestParam(defaultValue = "30") int days) {
-		if (internalToken.isBlank() || token == null || !MessageDigest.isEqual(
-				internalToken.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))) {
+		if (!internalToken.matches(token)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 		return ResponseEntity.ok(visits.stats(Math.clamp(days, 1, 90)));
