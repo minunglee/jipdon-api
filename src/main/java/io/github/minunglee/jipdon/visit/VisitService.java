@@ -4,6 +4,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HexFormat;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
  *
  * 개인정보를 남기지 않도록 원래 IP는 저장하지 않는다. (IP + 브라우저 + 날짜)를 비밀값으로 HMAC 해 앞 16자만 남겨,
  * 같은 날 같은 사람인지는 셀 수 있지만 다음 날이면 연결되지 않고 원래 IP로 되돌릴 수도 없다. 쿠키도 쓰지 않는다.
+ * 같은 사람이 같은 페이지를 30분 안에 다시 열면(새로고침 등) 조회를 한 번만 센다.
  */
 @Service
 public class VisitService {
@@ -33,6 +35,9 @@ public class VisitService {
 			Pattern.CASE_INSENSITIVE);
 
 	private static final int MAX_PATH = 200;
+
+	/** 이 시간 안에 같은 사람이 같은 페이지를 다시 열면 조회를 새로 세지 않는다 */
+	static final Duration REPEAT_WINDOW = Duration.ofMinutes(30);
 
 	private final JdbcTemplate jdbc;
 
@@ -64,8 +69,15 @@ public class VisitService {
 			return false;
 		}
 		LocalDate today = LocalDate.now(clock.withZone(zone));
+		String visitor = visitor(ip, ua, today);
+		Boolean repeated = jdbc.queryForObject(
+				"SELECT EXISTS (SELECT 1 FROM page_view WHERE visitor = ? AND path = ? AND viewed_at > ?)", Boolean.class,
+				visitor, cleanPath, Timestamp.from(clock.instant().minus(REPEAT_WINDOW)));
+		if (Boolean.TRUE.equals(repeated)) {
+			return false;
+		}
 		jdbc.update("INSERT INTO page_view (viewed_at, path, referrer_host, visitor, device) VALUES (?, ?, ?, ?, ?)",
-				Timestamp.from(clock.instant()), cleanPath, referrerHost(referrer), visitor(ip, ua, today),
+				Timestamp.from(clock.instant()), cleanPath, referrerHost(referrer), visitor,
 				ua.contains("Mobi") ? "mobile" : "desktop");
 		return true;
 	}

@@ -99,6 +99,17 @@ class VisitIntegrationTest {
 	}
 
 	@Test
+	void 새로고침은_30분_안에_한_번만_센다() throws Exception {
+		for (int i = 0; i < 5; i++) {
+			visit("/jeonse-risk/", "", "203.0.113.7", CHROME);
+		}
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM page_view", Integer.class)).isEqualTo(1);
+		visit("/loan/", "", "203.0.113.7", CHROME); // 다른 페이지는 따로
+		visit("/jeonse-risk/", "", "198.51.100.9", CHROME); // 다른 사람은 따로
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM page_view", Integer.class)).isEqualTo(3);
+	}
+
+	@Test
 	void 이상한_경로는_기록하지_않는다() throws Exception {
 		visit("javascript:alert(1)", "", "203.0.113.7", CHROME).andExpect(status().isNoContent());
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM page_view", Integer.class)).isZero();
