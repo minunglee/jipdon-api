@@ -20,6 +20,8 @@ class CorsConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
+		// AI 계산기 안내만 질문을 보낸다(POST)
+		registry.addMapping("/api/assist").allowedOrigins(allowedOrigins).allowedMethods("POST");
 		registry.addMapping("/api/**").allowedOrigins(allowedOrigins).allowedMethods("GET");
 	}
 
