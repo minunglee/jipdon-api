@@ -49,6 +49,9 @@ jipdon:
   visit:
     salt: ${JIPDON_VISIT_SALT:local-dev-visit-salt}
   internal-token: ${JIPDON_INTERNAL_TOKEN:}
+  # AI 계산기 안내: 같은 서버의 AI 게이트웨이에 호출을 맡긴다 (토큰은 위 internal-token 공유, 없으면 안내를 끈다)
+  assist:
+    gateway-url: ${JIPDON_GATEWAY_URL:http://app:8080/internal/llm}
   analysis:
     # 이 기간 거래가 없으면 두 번째 기간까지 넓혀 본다
     recent-months: 12

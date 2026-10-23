@@ -50,6 +50,7 @@ flowchart LR
 | `GET /api/detached?region=11440&type=다가구` | 단독·다가구 동별 최근 12개월 전세 보증금 사분위·중앙값, 매매 중앙값과 면적 |
 | `GET /api/rankings?kind=APT&sido=서울` | 전세가율 높은 동네 순위 (동별 건물·면적 전세가율의 중앙값, 표본 3개 이상, 상위 50) |
 | `GET /api/status` | 마지막 수집 시각, 대략의 건수 |
+| `POST /api/assist` | AI 계산기 안내: 질문을 받아 알맞은 계산기와 미리 채운 입력값 링크. AI 호출은 같은 서버의 [AI 게이트웨이](https://github.com/minunglee/spring-llm-gateway)에 맡기고(사용량·예산 방어), 이 서버는 계산기 목록 밖의 계산기·입력칸·범위 밖 값을 버린다 |
 
 ## 설계에서 신경 쓴 점
 
