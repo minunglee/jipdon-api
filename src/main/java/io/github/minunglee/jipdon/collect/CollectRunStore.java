@@ -17,10 +17,12 @@ public class CollectRunStore {
 		this.jdbc = jdbc;
 	}
 
+	/** 실행 이력 한 줄 (값의 뜻은 Collector.Result와 같다) */
 	public record Run(Instant startedAt, Instant finishedAt, int tasks, int calls, int changedRows, int failedTasks,
 			boolean stoppedByQuota, int remainingTasks) {
 	}
 
+	/** 실행 결과 한 줄 저장 */
 	void record(Collector.Result result, Instant startedAt, Instant finishedAt) {
 		jdbc.update("""
 				INSERT INTO collect_run (started_at, finished_at, tasks, calls, changed_rows, failed_tasks,

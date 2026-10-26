@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class VisitService {
 
+	/** 저장할 경로 최대 길이 (비정상적으로 긴 주소가 DB를 채우지 않게) */
 	private static final int MAX_PATH = 200;
 
 	/** 이 시간 안에 같은 사람이 같은 페이지를 다시 열면 조회를 새로 세지 않는다 */
@@ -94,6 +95,7 @@ public class VisitService {
 				rank("path", since), rank("referrer_host", since), rank("device", since));
 	}
 
+	/** 오늘부터 거슬러 days일 동안의 조회·순방문자 합계 */
 	private static VisitStats.Count sum(List<VisitStats.Day> daily, LocalDate today, int days) {
 		LocalDate from = today.minusDays(days - 1L);
 		long views = 0;
@@ -107,6 +109,7 @@ public class VisitService {
 		return new VisitStats.Count(views, visitors);
 	}
 
+	/** 열(경로·유입 사이트·기기)별 많이 나온 순 상위 10개 */
 	private List<VisitStats.Rank> rank(String column, Timestamp since) {
 		return jdbc.query("SELECT " + column + " AS k, count(*) AS c FROM page_view WHERE viewed_at >= ? AND " + column
 				+ " IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 10",
@@ -143,6 +146,7 @@ public class VisitService {
 		}
 	}
 
+	/** 순방문자 키: (IP + 브라우저 + 날짜)를 비밀값으로 HMAC 한 앞 16자. 같은 날 같은 사람만 같고, 원래 IP로 되돌릴 수 없다 */
 	String visitor(String ip, String userAgent, LocalDate date) {
 		try {
 			Mac mac = Mac.getInstance("HmacSHA256");

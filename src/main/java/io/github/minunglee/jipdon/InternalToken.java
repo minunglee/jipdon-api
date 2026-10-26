@@ -19,6 +19,7 @@ public class InternalToken {
 		this.token = token.getBytes(StandardCharsets.UTF_8);
 	}
 
+	/** 토큰이 설정돼 있고 요청 토큰과 같은지 (상수 시간 비교) */
 	public boolean matches(String candidate) {
 		return token.length > 0 && candidate != null
 				&& MessageDigest.isEqual(token, candidate.getBytes(StandardCharsets.UTF_8));

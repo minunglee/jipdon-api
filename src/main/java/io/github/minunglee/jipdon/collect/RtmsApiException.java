@@ -17,10 +17,12 @@ public class RtmsApiException extends RuntimeException {
 		this.quotaExceeded = quotaExceeded;
 	}
 
+	/** 공공데이터포털 오류 코드 */
 	public String code() {
 		return code;
 	}
 
+	/** 하루 호출 한도 초과인지 (이 경우 수집을 멈추고 다음 실행에서 이어 간다) */
 	public boolean quotaExceeded() {
 		return quotaExceeded;
 	}

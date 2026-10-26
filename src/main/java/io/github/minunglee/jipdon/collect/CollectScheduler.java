@@ -25,6 +25,7 @@ class CollectScheduler {
 		this.rankingService = rankingService;
 	}
 
+	/** 앱이 뜬 직후: 순위 요약이 비어 있으면 먼저 만들고 수집을 한 번 돌린다 (별도 스레드라 시작을 막지 않음) */
 	@EventListener(ApplicationReadyEvent.class)
 	void onStartup() {
 		// 시작을 막지 않도록 별도 스레드에서 돈다
@@ -34,6 +35,7 @@ class CollectScheduler {
 		});
 	}
 
+	/** 정해진 시각(6시간마다, 한국 시간)에 수집 */
 	@Scheduled(cron = "${jipdon.collect.cron}", zone = "${jipdon.zone}")
 	void scheduled() {
 		collector.run();

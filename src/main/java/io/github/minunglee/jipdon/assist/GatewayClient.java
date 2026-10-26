@@ -38,9 +38,15 @@ class GatewayClient {
 
 	}
 
+	/**
+	 * 게이트웨이 /internal/llm 요청
+	 *
+	 * @param subject 사용자별 한도를 셀 키 (IP 해시)
+	 */
 	record Request(String subject, String system, String message, int maxTokens) {
 	}
 
+	/** 게이트웨이 응답 중 쓰는 값 */
 	record Response(String answer, boolean degraded) {
 	}
 
@@ -61,6 +67,7 @@ class GatewayClient {
 		this.token = token;
 	}
 
+	/** 게이트웨이 호출. 토큰이 없으면(로컬) 바로 사용 불가, 429면 한도 초과, 그 밖의 실패는 사용 불가로 돌려준다 */
 	Result complete(Request request) {
 		if (token.isBlank()) {
 			return new Result.Unavailable();

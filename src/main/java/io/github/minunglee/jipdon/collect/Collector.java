@@ -68,6 +68,15 @@ public class Collector {
 		this.clock = clock;
 	}
 
+	/**
+	 * 수집 실행 결과
+	 *
+	 * @param tasks 끝낸 일 수
+	 * @param calls 공공 API 호출 수
+	 * @param changedRows 새로 들어오거나 바뀐 거래 수
+	 * @param stoppedByQuota 하루 한도에 닿아 멈췄는지
+	 * @param remainingTasks 다음 실행으로 넘긴 일 수 (-1이면 실행하지 않음)
+	 */
 	public record Result(int tasks, int calls, int changedRows, int failedTasks, boolean stoppedByQuota,
 			int remainingTasks) {
 	}
@@ -84,6 +93,7 @@ public class Collector {
 		return tasks;
 	}
 
+	/** 할 일 정하기: 최근 refreshMonths(3개월)는 마지막 수집 후 20시간이 지났으면 다시, 그 이전 24개월은 아직 안 받은 달만 */
 	Plan planParts() {
 		YearMonth current = YearMonth.now(clock);
 		Instant now = clock.instant();
@@ -109,6 +119,7 @@ public class Collector {
 		return new Plan(refresh, backlog);
 	}
 
+	/** 공공데이터포털 인증키가 설정됐는지 (관리자 화면 표시용) */
 	boolean keyConfigured() {
 		return client.configured();
 	}
@@ -131,6 +142,7 @@ public class Collector {
 		}
 	}
 
+	/** 할 일을 순서대로 처리: 페이지를 넘기며 받아 저장하고 수집 기록을 남긴다. 한 번에 최대 호출 수까지, 하루 한도 초과면 멈춤. 새 거래가 있으면 순위 요약을 다시 계산하고 캐시 버전을 올린다 */
 	private Result collect(List<Task> tasks) {
 		long started = System.nanoTime();
 		Instant startedAt = clock.instant();

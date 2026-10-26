@@ -31,6 +31,7 @@ public final class RtmsXmlParser {
 	private RtmsXmlParser() {
 	}
 
+	/** API 응답 XML → 거래 목록. 오류 응답이면 코드와 함께 예외 (호출 한도 초과 코드 22는 따로 표시) */
 	public static RtmsPage parse(String xml, DealKind kind) {
 		Document doc = read(xml);
 		Element root = doc.getDocumentElement();
@@ -56,6 +57,7 @@ public final class RtmsXmlParser {
 		return new RtmsPage(total == null ? items.size() : Integer.parseInt(total), items);
 	}
 
+	/** item 태그 하나 → 거래 하나. 종류마다 건물 이름 태그가 달라(aptNm, offiNm, mhouseNm) 나눠 읽는다 */
 	private static RtmsItem item(Element e, DealKind kind) {
 		// 종류마다 건물 이름 태그가 다르다. 단독·다가구는 이름이 없다
 		String name;
@@ -84,6 +86,7 @@ public final class RtmsXmlParser {
 				"O".equals(text(e, "cdealType")), decimal(e, "totalFloorAr"), decimal(e, "plottageAr"));
 	}
 
+	/** XML 문서 읽기. 외부 엔티티를 막아 XXE 공격을 차단한다 */
 	private static Document read(String xml) {
 		try {
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -110,20 +113,24 @@ public final class RtmsXmlParser {
 		return value.isEmpty() ? null : value;
 	}
 
+	/** 태그 값을 정수로 ("12,345"처럼 쉼표가 있어도 읽음). 없으면 null */
 	private static Integer integer(Element parent, String tag) {
 		String value = text(parent, tag);
 		return value == null ? null : Integer.valueOf(value.replace(",", ""));
 	}
 
+	/** 태그 값을 소수로 (면적 등). 없으면 null */
 	private static BigDecimal decimal(Element parent, String tag) {
 		String value = text(parent, tag);
 		return value == null ? null : new BigDecimal(value);
 	}
 
+	/** null이면 빈 문자열 (건물 키에 null이 들어가지 않게) */
 	private static String orEmpty(String value) {
 		return value == null ? "" : value;
 	}
 
+	/** null이면 0 (월세가 비어 있으면 전세) */
 	private static Integer orZero(Integer value) {
 		return value == null ? 0 : value;
 	}

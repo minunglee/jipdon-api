@@ -18,6 +18,7 @@ class CorsConfig implements WebMvcConfigurer {
 		this.allowedOrigins = allowedOrigins;
 	}
 
+	/** 로컬 개발 화면(4321)이 이 앱을 직접 부를 수 있게 허용 (운영은 같은 도메인이라 해당 없음) */
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
 		// AI 계산기 안내만 질문을 보낸다(POST)

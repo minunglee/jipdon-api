@@ -19,18 +19,22 @@ import java.util.stream.Collectors;
  */
 public final class Regions {
 
+	/** 수집 대상 전체 지역 (앱이 뜰 때 regions.tsv에서 한 번 읽음) */
 	public static final List<Region> ALL = load();
 
+	/** 코드로 빨리 찾기 위한 색인 */
 	private static final Map<String, Region> BY_CODE = ALL.stream()
 		.collect(Collectors.toUnmodifiableMap(Region::code, Function.identity()));
 
 	private Regions() {
 	}
 
+	/** 시군구 코드로 지역 찾기 (지원하지 않는 코드면 빈 값) */
 	public static Optional<Region> find(String code) {
 		return Optional.ofNullable(BY_CODE.get(code));
 	}
 
+	/** regions.tsv 읽기: 코드·시도·이름 탭 구분, # 줄과 빈 줄은 건너뜀 */
 	private static List<Region> load() {
 		try (InputStream in = Regions.class.getResourceAsStream("/regions.tsv");
 				BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
