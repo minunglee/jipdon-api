@@ -57,11 +57,17 @@ public final class JeonseCalculator {
 	public record AreaResult(int area, Stat sale, Stat jeonse, BigDecimal ratio, Level level) {
 	}
 
+	/** 면적별로 화면에 함께 보여줄 최근 근거 거래 수 */
 	private static final int RECENT_DEALS = 5;
 
 	private JeonseCalculator() {
 	}
 
+	/**
+	 * 면적(㎡, 소수점 버림)별로 매매·전세 중앙값을 구해 전세가율(전세 ÷ 매매 × 100, 소수 첫째 자리)과 위험 구간을 계산한다
+	 *
+	 * @param recentMonths 우선 보는 기간 (12개월), 거래가 없으면 fallbackMonths(24개월)까지 넓힌다
+	 */
 	public static List<AreaResult> calculate(List<Deal> sales, List<Deal> jeonse, LocalDate today, int recentMonths,
 			int fallbackMonths) {
 		Map<Integer, List<Deal>> salesByArea = byArea(sales);
@@ -83,10 +89,12 @@ public final class JeonseCalculator {
 		return results;
 	}
 
+	/** 전용면적을 소수점 버림한 ㎡로 (84.97 → 84). 반올림하면 같은 타입이 59와 60으로 갈라진다 */
 	static int areaBucket(BigDecimal area) {
 		return area.setScale(0, RoundingMode.DOWN).intValueExact();
 	}
 
+	/** 거래를 면적 타입별로 묶는다 */
 	private static Map<Integer, List<Deal>> byArea(List<Deal> deals) {
 		Map<Integer, List<Deal>> map = new TreeMap<>();
 		for (Deal deal : deals) {

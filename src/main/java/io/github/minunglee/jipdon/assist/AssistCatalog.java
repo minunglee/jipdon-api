@@ -108,6 +108,14 @@ final class AssistCatalog {
 
 	}
 
+	/**
+	 * 계산기 하나
+	 *
+	 * @param id AI가 고르는 식별자
+	 * @param href 화면 주소
+	 * @param purpose 프롬프트에 넣는 설명
+	 * @param fields AI가 채울 수 있는 입력칸
+	 */
 	record Tool(String id, String href, String name, String purpose, List<Field> fields) {
 
 		Optional<Field> field(String key) {
@@ -116,6 +124,7 @@ final class AssistCatalog {
 
 	}
 
+	/** AI가 안내할 수 있는 계산기와 입력칸 전체 목록 (여기 없는 것은 링크로 나가지 않는다) */
 	static final List<Tool> TOOLS = List.of(
 			new Tool("jeonse-risk", "/jeonse-risk/", "전세 위험 확인 (전세가율)",
 					"계약하려는 집의 매매가 대비 전세가율, 깡통전세 위험, 동네 전세 시세", List.of()),
@@ -150,6 +159,7 @@ final class AssistCatalog {
 					List.of(Field.money("deposit", "전세 보증금"), Field.percent("ratio", "대출 비율"),
 							Field.percent("rate", "연 금리"), Field.number("years", "기간(년)", 1, 10))));
 
+	/** id로 계산기 찾기 (AI가 지어낸 id면 빈 값) */
 	static Optional<Tool> tool(String id) {
 		return TOOLS.stream().filter(tool -> tool.id().equals(id)).findFirst();
 	}

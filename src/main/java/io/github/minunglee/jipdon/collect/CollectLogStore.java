@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CollectLogStore {
 
+	/** 수집 기록의 월 형식 (예: 202610) */
 	private static final DateTimeFormatter YYYYMM = DateTimeFormatter.ofPattern("yyyyMM");
 
 	private final JdbcTemplate jdbc;
@@ -22,6 +23,7 @@ public class CollectLogStore {
 		this.jdbc = jdbc;
 	}
 
+	/** 수집 일 하나: 지역(시군구) × 거래 종류 × 월 */
 	public record Task(String sggCd, DealKind kind, YearMonth month) {
 	}
 
@@ -35,6 +37,7 @@ public class CollectLogStore {
 		return logs;
 	}
 
+	/** 이 일을 언제 받았고 몇 건이었는지 저장 (이미 있으면 덮어씀) */
 	public void record(Task task, int rowCount, Instant at) {
 		jdbc.update("""
 				INSERT INTO collect_log (sgg_cd, deal_kind, deal_ym, row_count, collected_at) VALUES (?, ?, ?, ?, ?)

@@ -28,8 +28,10 @@ public class RtmsClient {
 
 	private static final Logger log = LoggerFactory.getLogger(RtmsClient.class);
 
+	/** API 요청 파라미터 계약년월 형식 (DEAL_YMD=202610) */
 	private static final DateTimeFormatter YYYYMM = DateTimeFormatter.ofPattern("yyyyMM");
 
+	/** 일시적 오류(네트워크·5xx) 때 최대 시도 횟수 */
 	private static final int MAX_ATTEMPTS = 3;
 
 	private final RestClient restClient;
@@ -51,10 +53,12 @@ public class RtmsClient {
 		this.pageSize = rtms.pageSize();
 	}
 
+	/** 한 번에 받는 거래 수 (페이지 크기) */
 	public int pageSize() {
 		return pageSize;
 	}
 
+	/** 인증키가 있는지 (없으면 수집을 건너뛴다) */
 	public boolean configured() {
 		return !serviceKey.isEmpty();
 	}
@@ -106,6 +110,7 @@ public class RtmsClient {
 		}
 	}
 
+	/** 재시도 전 대기: 1초, 2초 … (시도할수록 길게) */
 	private static void pause(int attempt) {
 		try {
 			Thread.sleep(1000L * attempt);
@@ -116,6 +121,7 @@ public class RtmsClient {
 		}
 	}
 
+	/** HTTP 상태와 본문 */
 	private record Response(int status, String body) {
 	}
 

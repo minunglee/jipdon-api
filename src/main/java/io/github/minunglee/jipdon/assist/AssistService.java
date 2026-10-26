@@ -33,17 +33,23 @@ class AssistService {
 
 	private static final Logger log = LoggerFactory.getLogger(AssistService.class);
 
+	/** 질문 최대 글자 수 (긴 질문은 비용만 늘고 안내에 필요 없음) */
 	static final int MAX_QUESTION = 200;
 
+	/** AI 답변 최대 토큰 수. JSON 한 줄과 두 문장 안내에 충분하고, 게이트웨이 선차감액도 이 값에 비례해 작아진다 */
 	static final int MAX_TOKENS = 300;
 
+	/** 화면에 보여줄 안내 문장 최대 글자 수 (넘으면 자르고 … 표시) */
 	static final int MAX_ANSWER = 200;
 
+	/** 집·대출·투자와 상관없는 질문에 돌려주는 정해진 문구 (AI 문장을 그대로 내보내지 않는다) */
 	static final String OFF_TOPIC = "집돈은 집 계약·대출·투자 계산을 돕는 사이트라 이 질문에는 답하지 않아요. "
 			+ "예: \"전세 4억에 대출 80% 받으면 이자가 얼마예요?\"";
 
+	/** AI 답을 읽지 못했거나 안내 문장이 비었을 때 문구 */
 	static final String NOT_UNDERSTOOD = "질문을 이해하지 못했어요. 계산하고 싶은 내용과 금액을 함께 적어 주세요.";
 
+	/** AI에게 주는 역할과 규칙, 출력 형식(JSON), 계산기 목록. 목록은 AssistCatalog에서 만들어 검사 기준과 어긋나지 않는다 */
 	static final String SYSTEM_PROMPT = """
 			너는 집돈(jipdon.com) 계산기 안내원이다. 사용자의 질문에 가장 알맞은 계산기 하나를 고르고, 질문에 나온 값만 입력칸에 채운다.
 
@@ -72,6 +78,7 @@ class AssistService {
 	record Link(String href, String name, List<Filled> filled) {
 	}
 
+	/** 화면에 "대출 비율: 80%"처럼 보여줄 채운 값 */
 	record Filled(String label, String value) {
 	}
 
@@ -101,6 +108,7 @@ class AssistService {
 		this.salt = salt.getBytes(StandardCharsets.UTF_8);
 	}
 
+	/** 질문 → 게이트웨이로 AI 호출 → 결과 해석. 한도 초과·연결 실패는 예외, 게이트웨이가 예산 소진으로 AI를 안 불렀으면 그 안내 문구 */
 	Answer ask(String question, String clientIp) {
 		GatewayClient.Result result = gateway.complete(
 				new GatewayClient.Request(subject(clientIp), SYSTEM_PROMPT, question.strip(), MAX_TOKENS));
@@ -135,6 +143,7 @@ class AssistService {
 		return new Answer(true, text, link(tool.get(), fields));
 	}
 
+	/** 계산기 링크 만들기: 목록에 있는 입력칸만, 허용 범위의 값만 ?f.입력칸=값 으로 붙이고 화면용 설명도 만든다 */
 	private static Link link(Tool tool, Map<?, ?> fields) {
 		StringBuilder href = new StringBuilder(tool.href());
 		List<Filled> filled = new ArrayList<>();
@@ -174,6 +183,7 @@ class AssistService {
 		}
 	}
 
+	/** 안내 문장이 길면 MAX_ANSWER 글자에서 자른다 */
 	private static String shorten(String text) {
 		return text.length() > MAX_ANSWER ? text.substring(0, MAX_ANSWER) + "…" : text;
 	}

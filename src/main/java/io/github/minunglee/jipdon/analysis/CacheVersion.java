@@ -15,6 +15,7 @@ public class CacheVersion {
 
 	private static final Logger log = LoggerFactory.getLogger(CacheVersion.class);
 
+	/** 현재 캐시 버전 숫자를 담는 Redis 키 */
 	static final String KEY = "jipdon:cache:version";
 
 	private final StringRedisTemplate redis;
@@ -35,6 +36,7 @@ public class CacheVersion {
 		}
 	}
 
+	/** 버전을 1 올린다 → 이전 버전으로 만든 캐시 키는 더 이상 읽히지 않는다 (수집으로 새 거래가 들어왔을 때) */
 	public void bump() {
 		try {
 			redis.opsForValue().increment(KEY);

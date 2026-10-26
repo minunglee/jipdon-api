@@ -49,6 +49,7 @@ public enum DealKind {
 		return sale;
 	}
 
+	/** 공공데이터포털 API 주소 경로 (서비스/오퍼레이션) */
 	public String path() {
 		return "/" + service + "/" + operation;
 	}

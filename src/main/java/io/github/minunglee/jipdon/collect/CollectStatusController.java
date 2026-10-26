@@ -45,6 +45,7 @@ class CollectStatusController {
 			Instant lastCollectedAt, int totalTasks, int refreshDue, int missing, List<CollectRunStore.Run> recentRuns) {
 	}
 
+	/** GET /internal/collect: 관리자 화면(게이트웨이)이 읽는 수집 현황. 토큰이 틀리면 404 */
 	@GetMapping("/internal/collect")
 	ResponseEntity<CollectStatus> status(@RequestHeader(value = "X-Internal-Token", required = false) String token) {
 		if (!internalToken.matches(token)) {

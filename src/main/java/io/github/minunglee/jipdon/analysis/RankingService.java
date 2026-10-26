@@ -35,8 +35,10 @@ public class RankingService {
 
 	private static final Logger log = LoggerFactory.getLogger(RankingService.class);
 
+	/** 동네 순위에 넣는 최소 표본 수 (건물·면적 3개 미만인 동은 거래 한두 건에 순위가 흔들려 뺀다) */
 	static final int MIN_SAMPLES = 3;
 
+	/** 순위에 보여줄 최대 동 수 */
 	private static final int LIMIT = 50;
 
 	private final JdbcTemplate jdbc;
@@ -108,6 +110,7 @@ public class RankingService {
 		}
 	}
 
+	/** 전세가율 높은 동네 순위 (종류별, 시도 또는 전국). 요약 표(area_ratio)를 동 단위로 묶어 중앙값을 낸다. 결과는 버전 키로 캐시 */
 	public Ranking ranking(BuildingKind kind, String sido) {
 		String version = cacheVersion.current();
 		String key = "jipdon:ranking:v" + version + ":" + kind + ":" + (sido == null ? "all" : sido);
@@ -163,6 +166,7 @@ public class RankingService {
 		return ranking;
 	}
 
+	/** Redis 캐시 읽기 (실패하면 빈 값 → 다시 계산) */
 	private Optional<Ranking> readCache(String key) {
 		try {
 			String value = redis.opsForValue().get(key);
@@ -174,6 +178,7 @@ public class RankingService {
 		}
 	}
 
+	/** Redis 캐시 저장 (실패해도 응답에는 영향 없음) */
 	private void writeCache(String key, Ranking ranking) {
 		try {
 			redis.opsForValue().set(key, json.writeValueAsString(ranking), properties.cacheTtl());

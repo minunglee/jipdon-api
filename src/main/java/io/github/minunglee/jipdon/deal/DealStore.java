@@ -123,6 +123,7 @@ public class DealStore {
 				String.valueOf(item.deposit()), String.valueOf(item.monthlyRent())));
 	}
 
+	/** 처음 보는 건물을 저장하고 id를 받는다. 이미 있으면 기존 id (준공연도는 비어 있을 때만 채움) */
 	private long insertBuilding(BuildingKey key, RtmsItem item) {
 		// 다른 수집이 먼저 넣었을 수 있으므로 충돌하면 기존 id를 돌려받는다
 		Long id = jdbc.queryForObject("""
@@ -147,6 +148,7 @@ public class DealStore {
 		return hash(raw);
 	}
 
+	/** SHA-256 해시 앞 16바이트(32자). 거래 고유 키로 쓴다 */
 	private static String hash(String raw) {
 		try {
 			byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));

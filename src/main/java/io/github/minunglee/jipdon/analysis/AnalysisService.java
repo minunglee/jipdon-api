@@ -33,6 +33,7 @@ public class AnalysisService {
 	/** 계산 방식이 바뀌면 올린다. 예전 방식으로 계산해 둔 캐시를 쓰지 않게 키에 넣는다 */
 	private static final int CALCULATION_VERSION = 2;
 
+	/** 건물 검색 결과 최대 개수 (화면 목록 한 번에 보여줄 만큼) */
 	private static final int SEARCH_LIMIT = 20;
 
 	/** 이름이 짧으면 후보가 많으므로, 거래 수를 셀 후보를 먼저 이만큼으로 줄인다 */
@@ -85,6 +86,7 @@ public class AnalysisService {
 				pattern, SEARCH_CANDIDATES, SEARCH_LIMIT);
 	}
 
+	/** 건물 하나의 전세가율 분석. 캐시(버전 키)에 있으면 바로 돌려주고, 없으면 DB에서 계산해 24시간 캐시한다. 없는 건물이면 빈 값 */
 	public Optional<BuildingAnalysis> analyze(long buildingId) {
 		String version = cacheVersion.current();
 		LocalDate today = LocalDate.now(clock);
@@ -102,6 +104,7 @@ public class AnalysisService {
 		return result;
 	}
 
+	/** 실제 계산: 건물 정보와 최근 24개월 매매(해제 제외)·전세(월세 0) 거래를 읽어 면적별 중앙값과 전세가율을 구한다 */
 	private Optional<BuildingAnalysis> compute(long buildingId, LocalDate today) {
 		LocalDate since = today.minusMonths(properties.fallbackMonths());
 		List<BuildingSummary> found = jdbc.query("""
@@ -175,6 +178,7 @@ public class AnalysisService {
 		return summary;
 	}
 
+	/** DB의 소수 값(중앙값 등)을 반올림한 정수로 (값이 없으면 null) */
 	private static Integer rounded(Object value) {
 		return value == null ? null : (int) Math.round(((Number) value).doubleValue());
 	}
@@ -183,12 +187,14 @@ public class AnalysisService {
 	public record Status(Instant lastCollectedAt, long buildings, long saleDeals, long rentDeals, int regions) {
 	}
 
+	/** 화면 하단 데이터 현황: 마지막 수집 시각, 건물·매매·전월세 대략 건수, 지역 수 */
 	public Status status() {
 		// 건수는 정확할 필요가 없어 통계 추정값을 쓴다 (수백만 줄을 매번 세지 않게)
 		return new Status(collectLog.lastCollectedAt(), estimate("building"), estimate("sale_deal"),
 				estimate("rent_deal"), Regions.ALL.size());
 	}
 
+	/** PostgreSQL 통계의 대략 행 수 (count(*)로 수백만 줄을 세지 않으려고) */
 	private long estimate(String table) {
 		Long rows = jdbc.queryForObject(
 				"SELECT GREATEST(reltuples, 0)::bigint FROM pg_class WHERE relname = ? AND relkind = 'r'", Long.class,
@@ -196,6 +202,7 @@ public class AnalysisService {
 		return rows == null ? 0 : rows;
 	}
 
+	/** DB 한 줄 → 건물 요약 (지역 코드는 "서울 마포구" 같은 이름으로 바꾼다) */
 	private RowMapper<BuildingSummary> summaryMapper() {
 		return (rs, i) -> {
 			String code = rs.getString("sgg_cd");
@@ -206,6 +213,7 @@ public class AnalysisService {
 		};
 	}
 
+	/** Redis 캐시 읽기. Redis가 안 되면 빈 값을 돌려줘 그냥 계산하게 한다 (fail-open) */
 	private <T> Optional<T> readCache(String key, Class<T> type) {
 		try {
 			String value = redis.opsForValue().get(key);
@@ -217,6 +225,7 @@ public class AnalysisService {
 		}
 	}
 
+	/** Redis 캐시 저장 (실패해도 응답에는 영향 없음) */
 	private void writeCache(String key, Object value) {
 		try {
 			redis.opsForValue().set(key, json.writeValueAsString(value), properties.cacheTtl());

@@ -28,8 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 class ApiController {
 
+	/** 건물 검색어 최대 글자 수 (단지 이름 검색에 충분하고, 긴 LIKE 검색으로 DB를 괴롭히지 않게) */
 	private static final int MAX_QUERY_LENGTH = 30;
 
+	/** 단독·다가구 조회에서 받는 주택 유형 */
 	private static final Set<String> DETACHED_TYPES = Set.of("다가구", "단독");
 
 	private final AnalysisService analysis;
@@ -41,11 +43,13 @@ class ApiController {
 		this.ranking = ranking;
 	}
 
+	/** GET /api/regions: 지원 지역 목록 (거의 안 바뀌어 브라우저에 1시간 캐시) */
 	@GetMapping("/regions")
 	ResponseEntity<List<Region>> regions() {
 		return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofHours(1))).body(Regions.ALL);
 	}
 
+	/** GET /api/buildings: 지역 안에서 건물 이름·동으로 검색 (최근 거래 많은 순) */
 	@GetMapping("/buildings")
 	List<BuildingSummary> buildings(@RequestParam String region, @RequestParam BuildingKind kind,
 			@RequestParam(defaultValue = "") String q) {
@@ -56,6 +60,7 @@ class ApiController {
 		return analysis.search(found, kind, q);
 	}
 
+	/** GET /api/buildings/{id}/jeonse: 건물의 면적별 전세가율 분석 */
 	@GetMapping("/buildings/{id}/jeonse")
 	BuildingAnalysis jeonse(@PathVariable long id) {
 		return analysis.analyze(id).orElseThrow(() -> new NotFoundException("건물을 찾을 수 없습니다."));
@@ -81,6 +86,7 @@ class ApiController {
 		return ranking.ranking(kind, sido == null || sido.isBlank() ? null : sido);
 	}
 
+	/** GET /api/status: 데이터 현황 (화면의 "실거래 데이터 … 갱신" 한 줄) */
 	@GetMapping("/status")
 	AnalysisService.Status status() {
 		return analysis.status();

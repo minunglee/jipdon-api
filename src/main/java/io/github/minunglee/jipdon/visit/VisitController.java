@@ -33,6 +33,12 @@ class VisitController {
 		this.internalToken = internalToken;
 	}
 
+	/**
+	 * 비컨이 보내는 값
+	 *
+	 * @param path 본 페이지 경로
+	 * @param ref document.referrer (들어온 주소)
+	 */
 	record PageView(String path, String ref) {
 	}
 
@@ -45,6 +51,7 @@ class VisitController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** GET /internal/stats: 관리자 화면(게이트웨이)이 읽는 방문 통계. 토큰이 틀리면 404, 기간은 1~90일 */
 	@GetMapping("/internal/stats")
 	ResponseEntity<VisitStats> stats(@RequestHeader(value = "X-Internal-Token", required = false) String token,
 			@RequestParam(defaultValue = "30") int days) {

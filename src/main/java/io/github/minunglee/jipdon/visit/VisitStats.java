@@ -15,9 +15,11 @@ public record VisitStats(int days, Count today, Count last7, Count last30, List<
 	public record Count(long views, long visitors) {
 	}
 
+	/** 하루 조회 수와 순방문자 수 */
 	public record Day(LocalDate date, long views, long visitors) {
 	}
 
+	/** 순위 한 줄 (값, 횟수) */
 	public record Rank(String key, long count) {
 	}
 

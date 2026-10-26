@@ -17,6 +17,7 @@ public record RtmsItem(String sggCd, String umd, String jibun, String buildingNa
 		BigDecimal exclusiveArea, Integer floor, LocalDate dealDate, Integer price, Integer deposit, Integer monthlyRent,
 		String contractType, boolean canceled, BigDecimal totalFloorArea, BigDecimal plottageArea) {
 
+	/** 월세 0인 전월세 = 전세 */
 	public boolean jeonse() {
 		return monthlyRent != null && monthlyRent == 0;
 	}
