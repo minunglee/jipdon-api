@@ -25,13 +25,16 @@ class CollectStatusController {
 
 	private final JipdonProperties.Collect properties;
 
+	private final DealCountStore dealCountStore;
+
 	private final InternalToken internalToken;
 
 	CollectStatusController(Collector collector, CollectLogStore logStore, CollectRunStore runStore,
-			JipdonProperties properties, InternalToken internalToken) {
+			DealCountStore dealCountStore, JipdonProperties properties, InternalToken internalToken) {
 		this.collector = collector;
 		this.logStore = logStore;
 		this.runStore = runStore;
+		this.dealCountStore = dealCountStore;
 		this.properties = properties.collect();
 		this.internalToken = internalToken;
 	}
@@ -40,9 +43,11 @@ class CollectStatusController {
 	 * @param totalTasks 지역 × 종류 × 보관 개월 수
 	 * @param refreshDue 최근 달 중 다시 받을 때가 된 일
 	 * @param missing 아직 한 번도 받지 않은 달
+	 * @param deals 지금까지 쌓인 거래 건수
 	 */
 	record CollectStatus(boolean enabled, boolean keyConfigured, String cron, int maxCallsPerRun,
-			Instant lastCollectedAt, int totalTasks, int refreshDue, int missing, List<CollectRunStore.Run> recentRuns) {
+			Instant lastCollectedAt, int totalTasks, int refreshDue, int missing, List<CollectRunStore.Run> recentRuns,
+			DealCountStore.DealCounts deals) {
 	}
 
 	/** GET /internal/collect: 관리자 화면(게이트웨이)이 읽는 수집 현황. 토큰이 틀리면 404 */
@@ -55,7 +60,7 @@ class CollectStatusController {
 		int total = Regions.ALL.size() * DealKind.values().length * properties.historyMonths();
 		return ResponseEntity.ok(new CollectStatus(properties.enabled(), collector.keyConfigured(), properties.cron(),
 				properties.maxCallsPerRun(), logStore.lastCollectedAt(), total, plan.refresh().size(),
-				plan.backlog().size(), runStore.recent(10)));
+				plan.backlog().size(), runStore.recent(10), dealCountStore.counts()));
 	}
 
 }

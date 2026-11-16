@@ -115,7 +115,8 @@ class JeonseApiIntegrationTest {
 			.andExpect(jsonPath("$.totalTasks").value(tasks))
 			.andExpect(jsonPath("$.missing").value(tasks / 2)) // 지난달은 아직 안 받음
 			.andExpect(jsonPath("$.refreshDue").value(tasks / 2)) // 이번 달은 받을 차례
-			.andExpect(jsonPath("$.recentRuns", hasSize(0)));
+			.andExpect(jsonPath("$.recentRuns", hasSize(0)))
+			.andExpect(jsonPath("$.deals.sale").value(0));
 
 		collector.run();
 		collector.run(); // 할 일이 없는 실행은 이력에 남기지 않는다
@@ -130,7 +131,12 @@ class JeonseApiIntegrationTest {
 			.andExpect(jsonPath("$.recentRuns", hasSize(1)))
 			.andExpect(jsonPath("$.recentRuns[0].calls").value(tasks))
 			.andExpect(jsonPath("$.recentRuns[0].changedRows").value(24))
-			.andExpect(jsonPath("$.recentRuns[0].stoppedByQuota").value(false));
+			.andExpect(jsonPath("$.recentRuns[0].stoppedByQuota").value(false))
+			// 새 거래가 들어와 캐시 버전이 올랐으니 건수를 다시 센다
+			.andExpect(jsonPath("$.deals.sale").value(count("sale_deal")))
+			.andExpect(jsonPath("$.deals.rent").value(count("rent_deal")))
+			.andExpect(jsonPath("$.deals.detached").value(count("detached_deal")))
+			.andExpect(jsonPath("$.deals.countedAt").isNotEmpty());
 	}
 
 	@Test
