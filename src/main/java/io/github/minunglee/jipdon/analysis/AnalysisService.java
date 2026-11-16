@@ -10,6 +10,7 @@ import java.util.Optional;
 import io.github.minunglee.jipdon.JipdonProperties;
 import io.github.minunglee.jipdon.analysis.JeonseCalculator.Deal;
 import io.github.minunglee.jipdon.collect.CollectLogStore;
+import io.github.minunglee.jipdon.collect.DealCountStore;
 import io.github.minunglee.jipdon.deal.BuildingKind;
 import io.github.minunglee.jipdon.region.Region;
 import io.github.minunglee.jipdon.region.Regions;
@@ -49,17 +50,20 @@ public class AnalysisService {
 
 	private final CollectLogStore collectLog;
 
+	private final DealCountStore dealCounts;
+
 	private final JipdonProperties.Analysis properties;
 
 	private final Clock clock;
 
 	AnalysisService(JdbcTemplate jdbc, StringRedisTemplate redis, JsonMapper json, CacheVersion cacheVersion,
-			CollectLogStore collectLog, JipdonProperties properties, Clock clock) {
+			CollectLogStore collectLog, DealCountStore dealCounts, JipdonProperties properties, Clock clock) {
 		this.jdbc = jdbc;
 		this.redis = redis;
 		this.json = json;
 		this.cacheVersion = cacheVersion;
 		this.collectLog = collectLog;
+		this.dealCounts = dealCounts;
 		this.properties = properties.analysis();
 		this.clock = clock;
 	}
@@ -183,23 +187,23 @@ public class AnalysisService {
 		return value == null ? null : (int) Math.round(((Number) value).doubleValue());
 	}
 
-	/** 화면 하단의 데이터 현황 */
-	public record Status(Instant lastCollectedAt, long buildings, long saleDeals, long rentDeals, int regions) {
+	/**
+	 * 화면의 데이터 현황
+	 *
+	 * @param detachedDeals 단독·다가구 매매·전월세
+	 */
+	public record Status(Instant lastCollectedAt, long buildings, long saleDeals, long rentDeals, long detachedDeals,
+			int regions) {
 	}
 
-	/** 화면 하단 데이터 현황: 마지막 수집 시각, 건물·매매·전월세 대략 건수, 지역 수 */
+	/**
+	 * 화면 데이터 현황: 마지막 수집 시각, 건물·매매·전월세·단독다가구 건수, 지역 수.
+	 * 건수는 관리자 화면과 같은 정확한 값이고, 새 거래가 들어왔을 때만 다시 센다 ({@link DealCountStore}).
+	 */
 	public Status status() {
-		// 건수는 정확할 필요가 없어 통계 추정값을 쓴다 (수백만 줄을 매번 세지 않게)
-		return new Status(collectLog.lastCollectedAt(), estimate("building"), estimate("sale_deal"),
-				estimate("rent_deal"), Regions.ALL.size());
-	}
-
-	/** PostgreSQL 통계의 대략 행 수 (count(*)로 수백만 줄을 세지 않으려고) */
-	private long estimate(String table) {
-		Long rows = jdbc.queryForObject(
-				"SELECT GREATEST(reltuples, 0)::bigint FROM pg_class WHERE relname = ? AND relkind = 'r'", Long.class,
-				table);
-		return rows == null ? 0 : rows;
+		DealCountStore.DealCounts counts = dealCounts.counts();
+		return new Status(collectLog.lastCollectedAt(), counts.buildings(), counts.sale(), counts.rent(),
+				counts.detached(), Regions.ALL.size());
 	}
 
 	/** DB 한 줄 → 건물 요약 (지역 코드는 "서울 마포구" 같은 이름으로 바꾼다) */

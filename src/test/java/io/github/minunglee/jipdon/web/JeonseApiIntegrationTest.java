@@ -272,11 +272,15 @@ class JeonseApiIntegrationTest {
 	@Test
 	void 데이터_현황() throws Exception {
 		collector.run();
-		jdbc.execute("ANALYZE");
+		// 통계 추정값이 아니라 실제 건수 (ANALYZE 없이도 맞아야 한다)
 		mockMvc.perform(get("/api/status"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.regions").value(Regions.ALL.size()))
-			.andExpect(jsonPath("$.lastCollectedAt").exists());
+			.andExpect(jsonPath("$.lastCollectedAt").exists())
+			.andExpect(jsonPath("$.buildings").value(count("building")))
+			.andExpect(jsonPath("$.saleDeals").value(count("sale_deal")))
+			.andExpect(jsonPath("$.rentDeals").value(count("rent_deal")))
+			.andExpect(jsonPath("$.detachedDeals").value(count("detached_deal")));
 	}
 
 	private int count(String table) {
